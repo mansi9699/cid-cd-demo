@@ -81,21 +81,21 @@ jobs:
           path: app/build/outputs/apk/debug/app-pr.apk
 
   apk-diff:
-  needs: [ build-main, build-pr ]
-  runs-on: macOS-latest
-  steps:
-    - uses: actions/checkout@v1
-    - name: Install diffuse
-      run: brew install JakeWharton/repo/diffuse
-    - name: download artifact
-      uses: actions/download-artifact@v2.1.1
-      with:
-        name: apk_master
-        path: app/build/outputs/apk/debug/app-master
-    - name: download artifact
-      uses: actions/download-artifact@v2.1.1
-      with:
-        name: apk_pr
-        path: app/build/outputs/apk/debug/app-pr
-    - name: run differ
-      run: diffuse diff app/build/outputs/apk/debug/app-master/app-master.apk app/build/outputs/apk/debug/app-pr/app-pr.apk
+    needs: [ build-main, build-pr ]
+    runs-on: macOS-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Install diffuse
+        run: brew install JakeWharton/repo/diffuse
+      - name: download artifact
+        uses: actions/download-artifact@v2.1.1
+        with:
+          name: apk_master
+          path: app/build/outputs/apk/debug/app-master
+      - name: download artifact
+        uses: actions/download-artifact@v2.1.1
+        with:
+          name: apk_pr
+          path: app/build/outputs/apk/debug/app-pr
+      - name: run differ
+        run: diffuse diff app/build/outputs/apk/debug/app-master/app-master.apk app/build/outputs/apk/debug/app-pr/app-pr.apk
