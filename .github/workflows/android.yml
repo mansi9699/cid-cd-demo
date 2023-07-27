@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  publish:
+  deploy-minor:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -29,11 +29,13 @@ jobs:
           version-fragment: 'bug'
       - name: Bumped Release Version
         run: echo ${{ steps.bump_version.outputs.next-version }}
-      - name: Upload APK
-        uses: actions/upload-artifact@v3.1.2
+      - name: Docker Build & Push Action
+        uses: mr-smithers-excellent/docker-build-push@v6.2
         with:
-          name: Demo-APK
-          path: app/build/outputs/apk/debug/**.apk
+          image: mansisinghdocker/demo-ci-cd
+          registry: docker.io
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
   # Checkout main branch and build the APK
   build-main:
