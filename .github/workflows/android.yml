@@ -7,130 +7,97 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  deploy-minor:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: set up JDK 17
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: gradle
+      - uses: actions/checkout@v3
+      - name: set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+      - name: Build with Gradle
+        run: ./gradlew assembleDebug
+      - name: Bump release version
+        id: bump_version
+        uses: christian-draeger/increment-semantic-version@1.1.0
+        with:
+          current-version: '1.1.0'
+          version-fragment: 'bug'
+      - name: Bumped Release Version
+        run: echo ${{ steps.bump_version.outputs.next-version }}
+      - name: Docker Build & Push Action
+        uses: mr-smithers-excellent/docker-build-push@v6.2
+        with:
+          image: mansisinghdocker/demo-ci-cd
+          registry: docker.io
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-    - name: Build with Gradle
-      run: ./gradlew build
-      
-  test:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: set up JDK 17
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: gradle
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-    - name: Run Linter and Test
-      run: ./gradlew check
-    - name: Upload Reports
-      uses: actions/upload-artifact@v3.1.2
-      with:
-        name: Test-Reports
-        path: app/build/reports
-  
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Docker Build & Push Action
-      uses: mr-smithers-excellent/docker-build-push@v6.2
-      with:
-        image: mansisinghdocker/demo-ci-cd
-        registry: docker.io
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-        
-  publish:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: set up JDK 17
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: gradle
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-    - name: Build with Gradle
-      run: ./gradlew assembleDebug
-    - name: Bump release version
-      id: bump_version
-      uses: christian-draeger/increment-semantic-version@1.1.0
-      with:
-        current-version: '1.1.0'
-        version-fragment: 'feature'
-    - name: Bumped Release Version
-      run: echo ${{ steps.bump_version.outputs.next-version }}
-    - name: Upload APK
-      uses: actions/upload-artifact@v3.1.2
-      with:
-        name: Demo-APK
-        path: app/build/outputs/apk/debug/**.apk
-        
-  run-ui-test:
+  # Checkout main branch and build the APK
+  build-main:
     runs-on: macOS-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: set up JDK 17
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: gradle
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-    - name: Run UI test
-      uses: ReactiveCircus/android-emulator-runner@v2.28.0
-      with:
-        api-level: 29
-        script: ./gradlew connectedDebugAndroidTest
-    - name: Upload UI test reports
-      uses: actions/upload-artifact@v3.1.2
-      with:
-        name: UI-Test-reports
-        path: app/build/reports
+      - uses: actions/checkout@v3
+        with:
+          ref: main
+      - name: set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+      - name: Build Master APK
+        run: ./gradlew assembleDebug && mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/app-master.apk
+      - name: Upload APK
+        uses: actions/upload-artifact@v1
+        with:
+          name: apk_master
+          path: app/build/outputs/apk/debug/app-master.apk
 
-  coverage:
-    runs-on: ubuntu-latest
+  # Checkout PR branch and build the APK
+  build-pr:
+    runs-on: macOS-latest
+    needs: build-main
     steps:
-    - uses: actions/checkout@v3
-    - name: set up JDK 17
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: gradle
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew  
-    - name: Build
-      run: ./gradlew build
-    - name: Run Tests
-      run: ./gradlew test
-    - name: Run Test Coverage
-      run: ./gradlew testDebugUnitTestCoverageVerification
-    - name: Generate JaCoCo Badge
-      uses: cicirello/jacoco-badge-generator@v2
-      with:
-        generate-branches-badge: true
-        jacoco-csv-file: "**/testDebugUnitTestCoverage.csv"
-    - name: upload coverage report
-      uses: actions/upload-artifact@v3.1.2
-      with:
-        name: coverage report
-        path: app/build/reports/jacoco/testDebugUnitTestCoverage/html
+      - uses: actions/checkout@v3
+      - name: set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+      - name: Build PR APK
+        run: ./gradlew assembleDebug && mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/app-pr.apk
+      - name: Upload APK
+        uses: actions/upload-artifact@v1
+        with:
+          name: apk_pr
+          path: app/build/outputs/apk/debug/app-pr.apk
+
+  apk-diff:
+    needs: [ build-main, build-pr ]
+    runs-on: macOS-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Install diffuse
+        run: brew install JakeWharton/repo/diffuse
+      - name: download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: apk_master
+          path: app/build/outputs/apk/debug/app-master
+      - name: download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: apk_pr
+          path: app/build/outputs/apk/debug/app-pr
+      - name: run differ
+        run: diffuse diff app/build/outputs/apk/debug/app-master/app-master.apk app/build/outputs/apk/debug/app-pr/app-pr.apk
