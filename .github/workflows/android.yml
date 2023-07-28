@@ -90,12 +90,12 @@ jobs:
       - name: Install diffuse
         run: brew install JakeWharton/repo/diffuse
       - name: download artifact
-        uses: actions/download-artifact@v2.1.1
+        uses: actions/download-artifact@v3
         with:
           name: apk_master
           path: app/build/outputs/apk/debug/app-master
       - name: download artifact
-        uses: actions/download-artifact@v2.1.1
+        uses: actions/download-artifact@v3
         with:
           name: apk_pr
           path: app/build/outputs/apk/debug/app-pr
